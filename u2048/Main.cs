@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Drawing;
-using System.IO;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
@@ -12,8 +10,6 @@ namespace u2048 {
 
   public partial class Main : Form {
 
-    private const string GithubLandingPage = "sergiye/2048";
-    private readonly string currentVersion;
     private readonly string currentFileLocation;
     private readonly Game game;
     private bool musicPrevState = true;
@@ -24,7 +20,7 @@ namespace u2048 {
 
       var asm = Assembly.GetExecutingAssembly();
 
-      currentVersion = asm.GetName().Version.ToString(4);
+      var currentVersion = asm.GetName().Version.ToString(4);
       currentFileLocation = asm.Location;
       Text = $"{((AssemblyTitleAttribute)Attribute.GetCustomAttribute(asm, typeof(AssemblyTitleAttribute), false)).Title} Version: {currentVersion}";
       Icon = Icon.ExtractAssociatedIcon(currentFileLocation);
@@ -82,7 +78,13 @@ namespace u2048 {
 
       StartNewGame((byte) boardSize, lastScore, boardData);
 
-      Task.Run(() => { CheckForUpdates(true); });
+      var timer = new Timer();
+      timer.Interval = 3000;
+      timer.Tick += (_, _) => {
+        timer.Enabled = false;
+        timer.Enabled = !Updater.CheckForUpdates(true);
+      };
+      timer.Enabled = true;
     }
 
     private string BoardDataToString(int size, int[][] data) {
@@ -167,70 +169,15 @@ namespace u2048 {
     }
 
     private void appWebpageToolStripMenuItem_Click(object sender, EventArgs e) {
-      Process.Start("https://github.com/" + GithubLandingPage);
+      Process.Start("https://github.com/" + Updater.GITHUB_LANDING_PAGE);
     }
 
     private void checkForUpdatesToolStripMenuItem_Click(object sender, EventArgs e) {
-      CheckForUpdates(false);
+      Updater.CheckForUpdates(false);
     }
 
     #endregion
 
-    private void CheckForUpdates(bool silent) {
-      var update = true;
-      try {
-        using (var wc = new System.Net.WebClient()) {
-          var version = wc.DownloadString("https://raw.githubusercontent.com/" + GithubLandingPage + "/master/version.txt").TrimEnd();
-          if (currentVersion.CompareTo(version) >= 0) {
-            if (!silent)
-              MessageBox.Show($"You have the latest version ({currentVersion}).", "Update", MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
-            return;
-          }
-          if (!silent) {
-            update = MessageBox.Show($"New version available: {version}. Download this update?",
-              "Update", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
-          }
-        }
-      }
-      catch (Exception ex) {
-        if (!silent)
-          MessageBox.Show($"Error checking for a new version.\n{ex.Message}", "Update", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        update = false;
-      }
-      if (!update) return;
-
-      try {
-        using (var wc = new System.Net.WebClient()) {
-          
-          var selfFileName = Path.GetFileName(currentFileLocation);
-          var tempPath = Path.GetTempPath();
-          var updateFilePath = tempPath + "u2048.exe";
-          wc.DownloadFile("https://github.com/" + GithubLandingPage + "/releases/download/release/u2048.exe", updateFilePath);
-
-          var cmdFilePath = Path.GetTempPath() + "2048_Updater.cmd";
-          using (var batFile = new StreamWriter(File.Create(cmdFilePath))) {
-            batFile.WriteLine ("@ECHO OFF");
-            batFile.WriteLine ("TIMEOUT /t 1 /nobreak > NUL");
-            batFile.WriteLine ("TASKKILL /IM \"{0}\" > NUL", selfFileName);
-            batFile.WriteLine ("MOVE \"{0}\" \"{1}\"", updateFilePath, currentFileLocation);
-            batFile.WriteLine ("DEL \"%~f0\" & START \"\" /B \"{0}\"", currentFileLocation);
-          }
-          var startInfo = new ProcessStartInfo(cmdFilePath) {
-            CreateNoWindow = true,
-            UseShellExecute = false,
-            WorkingDirectory = tempPath
-          };
-          Process.Start(startInfo);
-          Environment.Exit(0);
-        }
-      }
-      catch (Exception ex) {
-        if (!silent)
-          MessageBox.Show($"Error downloading new version\n{ex.Message}", "Update", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-      }
-    }
-    
     private void MoveBoard(Game.Direction direction) {
       game.MoveBoard(direction);
       Invalidate();
