@@ -5,7 +5,7 @@
 
 just another implementation of the old famous game called '2048'
 
-WMPLib (Windows Media Player) required to start
+WMPLib (Windows Media Player) required to play the background game music
 
 # Download
 https://github.com/sergiye/2048/releases
