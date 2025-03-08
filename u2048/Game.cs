@@ -75,7 +75,7 @@ namespace u2048 {
     private static readonly SolidBrush scoreBrush = new SolidBrush(Color.LightGoldenrodYellow);
     private static readonly SolidBrush whiteBrush = new SolidBrush(Color.White);
 
-    private WMPLib.WindowsMediaPlayer player;
+    private object wmPlayer;
     private readonly List<Button> buttons = new List<Button>();
     private readonly ImageButton soundButton;
     private static string mainThemeFilePath;
@@ -200,20 +200,32 @@ namespace u2048 {
     }
     
     private void PlayMainTheme() {
-      if (gameOver || player == null && File.Exists(mainThemeFilePath)) {
-        player = new WMPLib.WindowsMediaPlayer();
-        player.PlayStateChange += state => {
-          if (state == (int)WMPLib.WMPPlayState.wmppsStopped)
-            player.controls.play();
-        };
-        player.URL = mainThemeFilePath;
-      }
+      try {
+        if (gameOver || wmPlayer == null && File.Exists(mainThemeFilePath)) {
+          var player = new WMPLib.WindowsMediaPlayer();
+          player = new WMPLib.WindowsMediaPlayer();
+          player.PlayStateChange += state => {
+            if (state == (int)WMPLib.WMPPlayState.wmppsStopped)
+              player.controls.play();
+          };
+          player.URL = mainThemeFilePath;
+          wmPlayer = player;
+        }
 
-      player?.controls.play();
+        (wmPlayer as WMPLib.WindowsMediaPlayer)?.controls.play();
+      }
+      catch (Exception) {
+        //ignore
+      }
     }
 
     private void StopMainTheme() {
-      player?.controls.pause();
+      try {
+        (wmPlayer as WMPLib.WindowsMediaPlayer)?.controls.pause();
+      }
+      catch (Exception) {
+        //ignore
+      }
     }
         
     private void PlayGameOverSound() {
